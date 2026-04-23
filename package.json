@@ -1,5 +1,6 @@
 {
   "name": "snipshot",
+  "description": "Turn any source file into a clean, themed screenshot.",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
