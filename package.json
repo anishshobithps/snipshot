@@ -1,8 +1,16 @@
 {
   "name": "snipshot",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "private": true,
+  "bin": {
+    "snipshot": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outfile dist/index.js --target bun --external puppeteer",
+    "start": "bun run dist/index.js"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
@@ -10,10 +18,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@resvg/resvg-js": "^2.6.2",
-    "culori": "^4.0.2",
-    "satori": "^0.26.0",
-    "sharp": "^0.34.5",
-    "shiki": "^4.0.2"
+    "puppeteer": "^22.0.0",
+    "shiki": "^3.0.0"
   }
 }
