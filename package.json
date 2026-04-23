@@ -1,0 +1,19 @@
+{
+  "name": "snipshot",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "culori": "^4.0.2",
+    "satori": "^0.26.0",
+    "sharp": "^0.34.5",
+    "shiki": "^4.0.2"
+  }
+}
