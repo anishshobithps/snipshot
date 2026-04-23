@@ -164,6 +164,8 @@ const main = defineCommand({
         filename: { type: "boolean", description: "Show filename tab", default: true },
         interactive: { type: "boolean", description: "Force interactive mode", alias: "i", default: false },
         "border-radius": { type: "string", description: "Border radius in px", default: "0" },
+        width: { type: "string", description: "Fix output width in px (disables auto-sizing)" },
+        height: { type: "string", description: "Fix output height in px (disables auto-sizing)" },
         "list-themes": { type: "boolean", description: "Print all available themes and exit" },
         "list-languages": { type: "boolean", description: "Print all supported languages and exit" },
     },
@@ -198,6 +200,8 @@ const main = defineCommand({
         const fontSize = parseInt(args["font-size"]);
         const padding = parseInt(args.padding);
         const borderRadius = parseInt(args["border-radius"]);
+        const width = args.width ? parseInt(args.width) : undefined;
+        const height = args.height ? parseInt(args.height) : undefined;
         const showWindow = args.window;
         const showFilename = args.filename;
         const output = args.output
@@ -211,7 +215,7 @@ const main = defineCommand({
         spin.start(`Rendering ${file} with theme "${theme}"…`);
 
         try {
-            const png = await snapshot({ code, file, theme, fontSize, padding, borderRadius, showWindow, showFilename });
+            const png = await snapshot({ code, file, theme, fontSize, padding, borderRadius, width, height, showWindow, showFilename });
             fs.writeFileSync(output, png);
             spin.stop(`Saved: ${output}`);
             p.outro("Done!");

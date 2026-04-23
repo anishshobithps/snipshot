@@ -43,6 +43,8 @@ Options:
   --font-size <n>      Font size in px (default: 14)
   --padding <n>        Outer padding in px (default: 40)
   --border-radius <n>  Corner radius in px (default: 0)
+  --width <n>          Fix output width in px (disables auto-sizing)
+  --height <n>         Fix output height in px (disables auto-sizing)
   --output <path>      Output PNG path (default: <filename>.png)
   --no-window          Hide the macOS window chrome
   --no-filename        Hide the filename tab
@@ -63,6 +65,9 @@ snipshot app.py --theme catppuccin-mocha --font-size 16
 
 # No window chrome, custom output path
 snipshot main.rs --no-window --output hero.png
+
+# Fixed size (e.g. for social/OG images)
+snipshot README.md --width 1280 --height 640 --output cover.png
 
 # See all themes
 snipshot --list-themes
@@ -87,5 +92,5 @@ Run `snipshot --list-themes` to see all of them.
 1. Shiki resolves the theme and maps it to a Monaco-compatible token format
 2. Puppeteer spins up a headless browser and loads Monaco Editor with your code
 3. After Monaco finishes rendering, snipshot reads the actual content height from the editor API and resizes the container to fit exactly - no extra whitespace at the bottom
-4. Width auto-sizes to the longest line so nothing gets cropped
-5. Puppeteer screenshots the element at 2x device pixel ratio and writes the PNG
+4. Width auto-sizes to the longest line so nothing gets cropped — or use `--width`/`--height` to lock the output to an exact pixel size
+5. Puppeteer screenshots the element at 2x device pixel ratio and writes the PNG (1x when `--width`/`--height` are set so the output is exactly the requested size)
