@@ -2,94 +2,214 @@
 
 import fs from "fs";
 import path from "path";
+import * as p from "@clack/prompts";
+import { defineCommand, runMain } from "citty";
 import { snapshot } from "./snapshot";
-import { listThemes, listLanguages } from "./shiki-bridge";
+import { bundledThemesInfo, bundledLanguagesInfo } from "shiki";
 
-const args = process.argv.slice(2);
+const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", ".next", "out", ".cache", "coverage"]);
+const CODE_EXTS = new Set([
+    ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+    ".py", ".rs", ".go", ".java", ".kt", ".swift",
+    ".c", ".cpp", ".h", ".hpp", ".cs", ".rb", ".php",
+    ".html", ".css", ".scss", ".sass", ".less",
+    ".json", ".yaml", ".yml", ".toml", ".xml",
+    ".sh", ".bash", ".zsh", ".fish", ".ps1",
+    ".md", ".mdx", ".sql", ".graphql", ".vue", ".svelte",
+]);
 
-if (args.includes("--list-themes")) {
-    const themes = listThemes();
-    console.log(`\n${themes.length} bundled themes:\n`);
-    for (const t of themes) console.log(`  ${t}`);
-    console.log();
-    process.exit(0);
+function collectFiles(dir: string, base = dir, depth = 0): string[] {
+    if (depth > 4) return [];
+    const results: string[] = [];
+    let entries: fs.Dirent[];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return []; }
+    for (const entry of entries) {
+        if (entry.name.startsWith(".")) continue;
+        const full = path.join(dir, entry.name);
+        const rel = path.relative(base, full);
+        if (entry.isDirectory()) {
+            if (!SKIP_DIRS.has(entry.name)) results.push(...collectFiles(full, base, depth + 1));
+        } else if (CODE_EXTS.has(path.extname(entry.name).toLowerCase())) {
+            results.push(rel);
+        }
+    }
+    return results;
 }
 
-if (args.includes("--list-languages")) {
-    const langs = listLanguages();
-    console.log(`\n${langs.length} bundled languages:\n`);
-    for (const l of langs) console.log(`  ${l}`);
-    console.log();
-    process.exit(0);
+async function runInteractive(initialFile?: string) {
+    p.intro("📸 snipshot");
+
+    let file: string;
+    if (initialFile) {
+        file = initialFile;
+    } else {
+        const cwd = process.cwd();
+        const found = collectFiles(cwd);
+
+        let chosen: string;
+        if (found.length === 0) {
+            chosen = "__manual__";
+        } else {
+            chosen = await p.select({
+                message: "File to snapshot",
+                options: [
+                    ...found.map((f) => ({ value: f, label: f })),
+                    { value: "__manual__", label: "Type a path…" },
+                ],
+            }) as string;
+            if (p.isCancel(chosen)) { p.cancel("Cancelled"); process.exit(0); }
+        }
+
+        if (chosen === "__manual__") {
+            const typed = await p.text({
+                message: "File path",
+                placeholder: "src/index.ts",
+                validate: (v) => {
+                    if (!v) return "File path is required";
+                    if (!fs.existsSync(v)) return `File not found: ${v}`;
+                },
+            }) as string;
+            if (p.isCancel(typed)) { p.cancel("Cancelled"); process.exit(0); }
+            file = typed;
+        } else {
+            file = path.join(cwd, chosen);
+        }
+    }
+
+    if (!fs.existsSync(file)) { p.cancel(`File not found: ${file}`); process.exit(1); }
+
+    const themeChoice = await p.select({
+        message: "Theme",
+        options: [
+            ...bundledThemesInfo.map((t) => ({ value: t.id, label: t.displayName ?? t.id })),
+        ],
+        initialValue: "tokyo-night",
+    }) as string;
+
+    if (p.isCancel(themeChoice)) { p.cancel("Cancelled"); process.exit(0); }
+
+    const theme = themeChoice;
+
+    const fontSizeStr = await p.text({
+        message: "Font size (px)",
+        placeholder: "14",
+        defaultValue: "14",
+        validate: (v) => (v && isNaN(parseInt(v))) ? "Must be a number" : undefined,
+    }) as string;
+    if (p.isCancel(fontSizeStr)) { p.cancel("Cancelled"); process.exit(0); }
+
+    const paddingStr = await p.text({
+        message: "Padding (px)",
+        placeholder: "40",
+        defaultValue: "40",
+        validate: (v) => (v && isNaN(parseInt(v))) ? "Must be a number" : undefined,
+    }) as string;
+    if (p.isCancel(paddingStr)) { p.cancel("Cancelled"); process.exit(0); }
+
+    const showWindow = await p.confirm({ message: "Show window chrome?", initialValue: true }) as boolean;
+    if (p.isCancel(showWindow)) { p.cancel("Cancelled"); process.exit(0); }
+
+    const showFilename = await p.confirm({ message: "Show filename tab?", initialValue: true }) as boolean;
+    if (p.isCancel(showFilename)) { p.cancel("Cancelled"); process.exit(0); }
+
+    const defaultOutput = path.join(process.cwd(), path.basename(file).replace(/\.[^/.]+$/, "") + ".png");
+    const outputStr = await p.text({
+        message: "Output path",
+        defaultValue: defaultOutput,
+        placeholder: defaultOutput,
+    }) as string;
+    if (p.isCancel(outputStr)) { p.cancel("Cancelled"); process.exit(0); }
+
+    const output = path.resolve(outputStr || defaultOutput);
+    const code = fs.readFileSync(file, "utf-8");
+    const fontSize = parseInt(fontSizeStr || "14");
+    const padding = parseInt(paddingStr || "40");
+
+    const spin = p.spinner();
+    spin.start("Rendering…");
+
+    try {
+        const png = await snapshot({ code, file, theme, fontSize, padding, showWindow, showFilename });
+        fs.writeFileSync(output, png);
+        spin.stop(`Saved: ${output}`);
+        p.outro("Done!");
+    } catch (e: any) {
+        spin.stop("Failed");
+        p.cancel(e.message);
+        process.exit(1);
+    }
 }
 
-if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
-    console.log(`
-snipshot — aesthetic code screenshots via Monaco Editor + Shiki
+const main = defineCommand({
+    meta: {
+        name: "snipshot",
+        description: "Aesthetic code screenshots via Monaco Editor + Shiki",
+    },
+    args: {
+        file: { type: "positional", description: "Source file to snapshot", required: false },
+        theme: { type: "string", description: "Shiki theme name", default: "tokyo-night" },
+        "font-size": { type: "string", description: "Font size in px", default: "14" },
+        padding: { type: "string", description: "Outer padding in px", default: "40" },
+        output: { type: "string", description: "Output PNG path" },
+        window: { type: "boolean", description: "Show window chrome", default: true },
+        filename: { type: "boolean", description: "Show filename tab", default: true },
+        interactive: { type: "boolean", description: "Force interactive mode", alias: "i", default: false },
+        "list-themes": { type: "boolean", description: "Print all available themes and exit" },
+        "list-languages": { type: "boolean", description: "Print all supported languages and exit" },
+    },
+    async run({ args }) {
+        if (args["list-themes"]) {
+            console.log(`\n${bundledThemesInfo.length} bundled themes:\n`);
+            for (const t of bundledThemesInfo) console.log(`  ${t.id}`);
+            console.log();
+            return;
+        }
 
-Usage:
-  snipshot <file> [options]
+        if (args["list-languages"]) {
+            console.log(`\n${bundledLanguagesInfo.length} bundled languages:\n`);
+            for (const l of bundledLanguagesInfo) console.log(`  ${l.id}`);
+            console.log();
+            return;
+        }
 
-Options:
-  --theme <name>       Shiki theme name (default: tokyo-night)
-  --font-size <n>      Font size in px (default: 14)
-  --padding <n>        Outer padding in px (default: 40)
-  --output <path>      Output PNG path (default: <basename>.png)
-  --no-window          Hide macOS window chrome
-  --no-filename        Hide filename tab in titlebar
-  --list-themes        Print all ${listThemes().length} available Shiki themes and exit
-  --list-languages     Print all ${listLanguages().length} supported languages and exit
-  --help               Show this message
+        // Interactive mode: no file provided, or -i flag
+        if (!args.file || args.interactive) {
+            await runInteractive(args.file as string | undefined);
+            return;
+        }
 
-Examples:
-  snipshot src/index.ts
-  snipshot renderer.ts --theme dracula --font-size 16
-  snipshot app.py --theme catppuccin-mocha --no-window
-  snipshot main.rs --theme rose-pine --no-filename --output hero.png
-  snipshot --list-themes
-`);
-    process.exit(0);
-}
+        const file = args.file as string;
+        if (!fs.existsSync(file)) {
+            console.error(`❌ File not found: ${file}`);
+            process.exit(1);
+        }
 
-const file = args[0] as string;
+        const theme = args.theme;
+        const fontSize = parseInt(args["font-size"]);
+        const padding = parseInt(args.padding);
+        const showWindow = args.window;
+        const showFilename = args.filename;
+        const output = args.output
+            ? path.resolve(args.output)
+            : path.join(process.cwd(), path.basename(file).replace(/\.[^/.]+$/, "") + ".png");
 
-if (!file || !fs.existsSync(file)) {
-    console.error(`❌ File not found: ${file}`);
-    process.exit(1);
-}
+        const code = fs.readFileSync(file, "utf-8");
 
-function getArg(flag: string): string | undefined {
-    const i = args.indexOf(flag);
-    return i !== -1 ? args[i + 1] : undefined;
-}
+        p.intro("📸 snipshot");
+        const spin = p.spinner();
+        spin.start(`Rendering ${file} with theme "${theme}"…`);
 
-const theme = getArg("--theme") ?? "tokyo-night";
-const fontSize = parseInt(getArg("--font-size") ?? "14");
-const padding = parseInt(getArg("--padding") ?? "40");
-const showWindow = !args.includes("--no-window");
-const showFilename = !args.includes("--no-filename");
-const outputArg = getArg("--output");
-
-const output = outputArg
-    ? path.resolve(outputArg)
-    : path.join(process.cwd(), path.basename(file).replace(/\.[^/.]+$/, "") + ".png");
-
-const code = fs.readFileSync(file, "utf-8");
-
-console.log(`📸 snipshot`);
-console.log(`   file:     ${file}`);
-console.log(`   theme:    ${theme}`);
-console.log(`   font:     ${fontSize}px`);
-console.log(`   window:   ${showWindow}`);
-console.log(`   filename: ${showFilename}`);
-
-async function run() {
-    const png = await snapshot({ code, file, theme, fontSize, padding, showWindow, showFilename });
-    fs.writeFileSync(output, png);
-    console.log(`\n✅ Saved: ${output}`);
-}
-
-run().catch((e) => {
-    console.error("❌ Failed:", e.message);
-    process.exit(1);
+        try {
+            const png = await snapshot({ code, file, theme, fontSize, padding, showWindow, showFilename });
+            fs.writeFileSync(output, png);
+            spin.stop(`Saved: ${output}`);
+            p.outro("Done!");
+        } catch (e: any) {
+            spin.stop("Failed");
+            p.cancel(e.message);
+            process.exit(1);
+        }
+    },
 });
+
+runMain(main);

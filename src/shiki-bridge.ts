@@ -23,14 +23,6 @@ export function resolveLanguage(filename: string): BundledLanguage | "plaintext"
     return aliasToId.get(ext) ?? "plaintext";
 }
 
-export function listLanguages(): string[] {
-    return bundledLanguagesInfo.map((l) => l.id);
-}
-
-export function listThemes(): string[] {
-    return bundledThemesInfo.map((t) => t.id);
-}
-
 export interface MonacoThemeData {
     base: "vs" | "vs-dark";
     inherit: boolean;

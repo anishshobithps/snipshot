@@ -18,6 +18,8 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@clack/prompts": "^1.2.0",
+    "citty": "^0.2.2",
     "puppeteer": "^22.0.0",
     "shiki": "^3.0.0"
   }
