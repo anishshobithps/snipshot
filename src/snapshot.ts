@@ -25,10 +25,14 @@ export async function snapshot(opts: SnapshotOptions): Promise<Buffer> {
     const lang = resolveLanguage(file);
     const resolved = await resolveTheme(themeName);
     const filename = file.split("/").pop() ?? file;
-    const lines = code.split("\n").length;
+    const codeLines = code.split("\n");
+    const lines = codeLines.length;
 
     const editorHeight = Math.min(Math.max(lines * (fontSize * 1.65) + 32, 120), 2400);
-    const totalWidth = 900;
+    const longestLine = Math.max(...codeLines.map((l) => l.length));
+    // ~0.6 * fontSize is the approximate monospace char width; add line-number gutter (48px) + scrollbar padding
+    const contentWidth = Math.ceil(longestLine * fontSize * 0.615) + 48 + 24;
+    const totalWidth = Math.min(Math.max(contentWidth, 600), 1800);
 
     const html = buildHTML({
         code, lang, filename,
@@ -44,7 +48,7 @@ export async function snapshot(opts: SnapshotOptions): Promise<Buffer> {
 
     try {
         const page = await browser.newPage();
-        await page.setViewport({ width: totalWidth + padding * 2, height: 1200, deviceScaleFactor: 2 });
+        await page.setViewport({ width: totalWidth + padding * 2 + 200, height: 1200, deviceScaleFactor: 2 });
         await page.setContent(html, { waitUntil: "networkidle0" });
 
         await page.waitForFunction(
