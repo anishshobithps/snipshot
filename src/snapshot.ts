@@ -7,6 +7,7 @@ export interface SnapshotOptions {
     theme?: string;
     fontSize?: number;
     padding?: number;
+    borderRadius?: number;
     showWindow?: boolean;
     showFilename?: boolean;
 }
@@ -18,6 +19,7 @@ export async function snapshot(opts: SnapshotOptions): Promise<Buffer> {
         theme: themeName = "tokyo-night",
         fontSize = 14,
         padding = 40,
+        borderRadius = 0,
         showWindow = true,
         showFilename = true,
     } = opts;
@@ -38,7 +40,7 @@ export async function snapshot(opts: SnapshotOptions): Promise<Buffer> {
         code, lang, filename,
         theme: resolved,
         monacoTheme: resolved.monacoTheme,
-        fontSize, editorHeight, totalWidth, padding, showWindow, showFilename,
+        fontSize, editorHeight, totalWidth, padding, borderRadius, showWindow, showFilename,
     });
 
     const browser = await puppeteer.launch({
@@ -132,11 +134,11 @@ require(['vs/editor/editor.main'],function(){
 </script>`;
 }
 
-function Page({ code, lang, filename, theme, monacoTheme, fontSize, editorHeight, totalWidth, padding, showWindow, showFilename }: {
+function Page({ code, lang, filename, theme, monacoTheme, fontSize, editorHeight, totalWidth, padding, borderRadius, showWindow, showFilename }: {
     code: string; lang: string; filename: string;
     theme: ResolvedTheme; monacoTheme: MonacoThemeData;
     fontSize: number; editorHeight: number; totalWidth: number;
-    padding: number; showWindow: boolean; showFilename: boolean;
+    padding: number; borderRadius: number; showWindow: boolean; showFilename: boolean;
 }): string {
     return `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -144,7 +146,7 @@ function Page({ code, lang, filename, theme, monacoTheme, fontSize, editorHeight
   * { margin:0;padding:0;box-sizing:border-box; }
   body { background:transparent;width:${totalWidth + padding * 2}px; }
   #outer { padding:${padding}px;background:transparent;display:inline-block; }
-  #capture { display:inline-flex;flex-direction:column;border-radius:12px;overflow:hidden;background:${theme.bg};width:${totalWidth}px; }
+  #capture { display:inline-flex;flex-direction:column;border-radius:${borderRadius}px;overflow:hidden;background:${theme.bg};width:${totalWidth}px; }
   #editor-container { width:${totalWidth}px;height:${editorHeight}px; }
   .monaco-editor .margin,.monaco-editor,.monaco-editor-background { background:${theme.bg} !important; }
 </style>
@@ -162,7 +164,7 @@ function buildHTML(opts: {
     code: string; lang: string; filename: string;
     theme: ResolvedTheme; monacoTheme: MonacoThemeData;
     fontSize: number; editorHeight: number; totalWidth: number;
-    padding: number; showWindow: boolean; showFilename: boolean;
+    padding: number; borderRadius: number; showWindow: boolean; showFilename: boolean;
 }): string {
     return Page(opts);
 }

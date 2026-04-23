@@ -106,6 +106,14 @@ async function runInteractive(initialFile?: string) {
     }) as string;
     if (p.isCancel(paddingStr)) { p.cancel("Cancelled"); process.exit(0); }
 
+    const borderRadiusStr = await p.text({
+        message: "Border radius (px)",
+        placeholder: "0",
+        defaultValue: "0",
+        validate: (v) => (v && isNaN(parseInt(v))) ? "Must be a number" : undefined,
+    }) as string;
+    if (p.isCancel(borderRadiusStr)) { p.cancel("Cancelled"); process.exit(0); }
+
     const showWindow = await p.confirm({ message: "Show window chrome?", initialValue: true }) as boolean;
     if (p.isCancel(showWindow)) { p.cancel("Cancelled"); process.exit(0); }
 
@@ -124,12 +132,13 @@ async function runInteractive(initialFile?: string) {
     const code = fs.readFileSync(file, "utf-8");
     const fontSize = parseInt(fontSizeStr || "14");
     const padding = parseInt(paddingStr || "40");
+    const borderRadius = parseInt(borderRadiusStr || "0");
 
     const spin = p.spinner();
     spin.start("Rendering…");
 
     try {
-        const png = await snapshot({ code, file, theme, fontSize, padding, showWindow, showFilename });
+        const png = await snapshot({ code, file, theme, fontSize, padding, borderRadius, showWindow, showFilename });
         fs.writeFileSync(output, png);
         spin.stop(`Saved: ${output}`);
         p.outro("Done!");
@@ -154,6 +163,7 @@ const main = defineCommand({
         window: { type: "boolean", description: "Show window chrome", default: true },
         filename: { type: "boolean", description: "Show filename tab", default: true },
         interactive: { type: "boolean", description: "Force interactive mode", alias: "i", default: false },
+        "border-radius": { type: "string", description: "Border radius in px", default: "0" },
         "list-themes": { type: "boolean", description: "Print all available themes and exit" },
         "list-languages": { type: "boolean", description: "Print all supported languages and exit" },
     },
@@ -187,6 +197,7 @@ const main = defineCommand({
         const theme = args.theme;
         const fontSize = parseInt(args["font-size"]);
         const padding = parseInt(args.padding);
+        const borderRadius = parseInt(args["border-radius"]);
         const showWindow = args.window;
         const showFilename = args.filename;
         const output = args.output
@@ -200,7 +211,7 @@ const main = defineCommand({
         spin.start(`Rendering ${file} with theme "${theme}"…`);
 
         try {
-            const png = await snapshot({ code, file, theme, fontSize, padding, showWindow, showFilename });
+            const png = await snapshot({ code, file, theme, fontSize, padding, borderRadius, showWindow, showFilename });
             fs.writeFileSync(output, png);
             spin.stop(`Saved: ${output}`);
             p.outro("Done!");
