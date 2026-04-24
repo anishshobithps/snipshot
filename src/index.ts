@@ -120,6 +120,16 @@ async function runInteractive(initialFile?: string) {
     const showFilename = await p.confirm({ message: "Show filename tab?", initialValue: true }) as boolean;
     if (p.isCancel(showFilename)) { p.cancel("Cancelled"); process.exit(0); }
 
+    let filenameLabel: string | undefined;
+    if (showFilename) {
+        const labelStr = await p.text({
+            message: "Custom filename label (leave blank to use actual filename)",
+            placeholder: path.basename(file),
+        }) as string;
+        if (p.isCancel(labelStr)) { p.cancel("Cancelled"); process.exit(0); }
+        filenameLabel = labelStr || undefined;
+    }
+
     const defaultOutput = path.join(process.cwd(), path.basename(file).replace(/\.[^/.]+$/, "") + ".png");
     const outputStr = await p.text({
         message: "Output path",
@@ -138,7 +148,7 @@ async function runInteractive(initialFile?: string) {
     spin.start("Rendering…");
 
     try {
-        const png = await snapshot({ code, file, theme, fontSize, padding, borderRadius, showWindow, showFilename });
+        const png = await snapshot({ code, file, theme, fontSize, padding, borderRadius, showWindow, showFilename, filenameLabel });
         fs.writeFileSync(output, png);
         spin.stop(`Saved: ${output}`);
         p.outro("Done!");
@@ -168,6 +178,7 @@ const main = defineCommand({
         height: { type: "string", description: "Fix output height in px (disables auto-sizing)" },
         "list-themes": { type: "boolean", description: "Print all available themes and exit" },
         "list-languages": { type: "boolean", description: "Print all supported languages and exit" },
+        "filename-label": { type: "string", description: "Custom label shown in the filename tab" },
     },
     async run({ args }) {
         if (args["list-themes"]) {
@@ -204,6 +215,7 @@ const main = defineCommand({
         const height = args.height ? parseInt(args.height) : undefined;
         const showWindow = args.window;
         const showFilename = args.filename;
+        const filenameLabel = args["filename-label"] as string | undefined;
         const output = args.output
             ? path.resolve(args.output)
             : path.join(process.cwd(), path.basename(file).replace(/\.[^/.]+$/, "") + ".png");
@@ -215,7 +227,7 @@ const main = defineCommand({
         spin.start(`Rendering ${file} with theme "${theme}"…`);
 
         try {
-            const png = await snapshot({ code, file, theme, fontSize, padding, borderRadius, width, height, showWindow, showFilename });
+            const png = await snapshot({ code, file, theme, fontSize, padding, borderRadius, width, height, showWindow, showFilename, filenameLabel });
             fs.writeFileSync(output, png);
             spin.stop(`Saved: ${output}`);
             p.outro("Done!");

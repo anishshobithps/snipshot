@@ -12,6 +12,7 @@ export interface SnapshotOptions {
     height?: number;
     showWindow?: boolean;
     showFilename?: boolean;
+    filenameLabel?: string;
 }
 
 export async function snapshot(opts: SnapshotOptions): Promise<Buffer> {
@@ -26,11 +27,12 @@ export async function snapshot(opts: SnapshotOptions): Promise<Buffer> {
         height: fixedHeight,
         showWindow = true,
         showFilename = true,
+        filenameLabel,
     } = opts;
 
     const lang = resolveLanguage(file);
     const resolved = await resolveTheme(themeName);
-    const filename = file.split("/").pop() ?? file;
+    const filename = filenameLabel ?? (file.split("/").pop() ?? file);
     const codeLines = code.split("\n");
     const lines = codeLines.length;
 

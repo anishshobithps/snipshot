@@ -46,6 +46,7 @@ Options:
   --width <n>          Fix output width in px (disables auto-sizing)
   --height <n>         Fix output height in px (disables auto-sizing)
   --output <path>      Output PNG path (default: <filename>.png)
+  --filename-label <text>  Custom label shown in the filename tab
   --no-window          Hide the macOS window chrome
   --no-filename        Hide the filename tab
   --list-themes        Print all 65 available themes and exit
@@ -65,6 +66,9 @@ snipshot app.py --theme catppuccin-mocha --font-size 16
 
 # No window chrome, custom output path
 snipshot main.rs --no-window --output hero.png
+
+# Custom filename label in the tab
+snipshot src/index.ts --filename-label "✨ index.ts"
 
 # Fixed size (e.g. for social/OG images)
 snipshot README.md --width 1280 --height 640 --output cover.png
