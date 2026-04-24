@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "bun build src/index.ts --outfile dist/index.js --target bun --external puppeteer",
+    "link": "bun run build && bun link",
     "start": "bun run dist/index.js"
   },
   "devDependencies": {
@@ -21,6 +22,7 @@
   "dependencies": {
     "@clack/prompts": "^1.2.0",
     "citty": "^0.2.2",
+    "ignore": "^7.0.5",
     "puppeteer": "^22.0.0",
     "shiki": "^3.0.0"
   }

@@ -4,21 +4,30 @@ import fs from "fs";
 import path from "path";
 import * as p from "@clack/prompts";
 import { defineCommand, runMain } from "citty";
+import ignore from "ignore";
 import { snapshot } from "./snapshot";
 import { bundledThemesInfo, bundledLanguagesInfo } from "shiki";
 
-const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", ".next", "out", ".cache", "coverage"]);
-const CODE_EXTS = new Set([
-    ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
-    ".py", ".rs", ".go", ".java", ".kt", ".swift",
-    ".c", ".cpp", ".h", ".hpp", ".cs", ".rb", ".php",
-    ".html", ".css", ".scss", ".sass", ".less",
-    ".json", ".yaml", ".yml", ".toml", ".xml",
-    ".sh", ".bash", ".zsh", ".fish", ".ps1",
-    ".md", ".mdx", ".sql", ".graphql", ".vue", ".svelte",
-]);
+const CODE_EXTS = new Set<string>();
+for (const lang of bundledLanguagesInfo) {
+    CODE_EXTS.add("." + lang.id);
+    for (const alias of lang.aliases ?? []) {
+        CODE_EXTS.add("." + alias);
+    }
+}
 
-function collectFiles(dir: string, base = dir, depth = 0): string[] {
+function loadIgnorer(dir: string) {
+    const ig = ignore();
+    for (const name of [".gitignore", ".ignore"]) {
+        const p = path.join(dir, name);
+        if (fs.existsSync(p)) {
+            ig.add(fs.readFileSync(p, "utf-8"));
+        }
+    }
+    return ig;
+}
+
+function collectFiles(dir: string, base = dir, ig = loadIgnorer(base), depth = 0): string[] {
     if (depth > 4) return [];
     const results: string[] = [];
     let entries: fs.Dirent[];
@@ -26,9 +35,10 @@ function collectFiles(dir: string, base = dir, depth = 0): string[] {
     for (const entry of entries) {
         if (entry.name.startsWith(".")) continue;
         const full = path.join(dir, entry.name);
-        const rel = path.relative(base, full);
+        const rel = path.relative(base, full).replace(/\\/g, "/");
+        if (ig.ignores(entry.isDirectory() ? rel + "/" : rel)) continue;
         if (entry.isDirectory()) {
-            if (!SKIP_DIRS.has(entry.name)) results.push(...collectFiles(full, base, depth + 1));
+            results.push(...collectFiles(full, base, ig, depth + 1));
         } else if (CODE_EXTS.has(path.extname(entry.name).toLowerCase())) {
             results.push(rel);
         }

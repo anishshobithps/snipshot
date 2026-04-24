@@ -13,11 +13,10 @@
 git clone https://github.com/anishshobithps/snipshot
 cd snipshot
 bun install
-bun run build
-bun link
+bun run link
 ```
 
-After `bun link`, the `snipshot` command is available globally.
+After `bun run link`, the `snipshot` command is available globally.
 
 ## Usage
 
@@ -29,7 +28,7 @@ Run without arguments and snipshot walks you through every option:
 snipshot
 ```
 
-It scans your current directory for code files, shows them in a scrollable list, then asks for theme, font size, padding, border radius, and output path. Press Enter to accept defaults.
+It scans your current directory for code files — using your `.gitignore` (and `.ignore` if present) to skip irrelevant paths — shows them in a scrollable list, then asks for theme, font size, padding, border radius, filename label, and output path. Press Enter to accept defaults.
 
 ### Direct mode
 
@@ -49,7 +48,7 @@ Options:
   --filename-label <text>  Custom label shown in the filename tab
   --no-window          Hide the macOS window chrome
   --no-filename        Hide the filename tab
-  --list-themes        Print all 65 available themes and exit
+  --list-themes        Print all available themes and exit
   --list-languages     Print all supported languages and exit
   -i, --interactive    Force interactive mode
   --help               Show help
@@ -79,7 +78,7 @@ snipshot --list-themes
 
 ## Themes
 
-snipshot ships all 65 themes from [Shiki](https://shiki.style). A few worth trying:
+snipshot ships all 235 languages and 65 themes from [Shiki](https://shiki.style). The full list of supported extensions and aliases is derived directly from Shiki's bundled language registry at runtime. A few themes worth trying:
 
 | Dark               | Light              |
 | ------------------ | ------------------ |
@@ -93,8 +92,8 @@ Run `snipshot --list-themes` to see all of them.
 
 ## How it works
 
-1. Shiki resolves the theme and maps it to a Monaco-compatible token format
-2. Puppeteer spins up a headless browser and loads Monaco Editor with your code
-3. After Monaco finishes rendering, snipshot reads the actual content height from the editor API and resizes the container to fit exactly - no extra whitespace at the bottom
-4. Width auto-sizes to the longest line so nothing gets cropped — or use `--width`/`--height` to lock the output to an exact pixel size
-5. Puppeteer screenshots the element at 2x device pixel ratio and writes the PNG (1x when `--width`/`--height` are set so the output is exactly the requested size)
+1. **File discovery** — in interactive mode, snipshot scans the working directory for files whose extension matches any language id or alias in Shiki's bundled registry. Paths matched by `.gitignore` or `.ignore` are skipped automatically.
+2. **Theme resolution** — the chosen Shiki theme is converted into a Monaco-compatible token/color format by `shiki-bridge`, preserving exact foreground colors and font styles.
+3. **Headless render** — Puppeteer launches a headless browser and loads a self-contained HTML page with Monaco Editor, the converted theme, and your code pre-loaded.
+4. **Precise sizing** — in auto-size mode, snipshot reads Monaco's actual content height via the editor API and resizes the container to fit exactly (no trailing whitespace). Width auto-sizes to the longest line. Pass `--width`/`--height` to lock output to an exact pixel size instead.
+5. **Screenshot** — Puppeteer captures the `#capture` element at 2× device pixel ratio (1× in fixed-size mode) and writes the PNG.
